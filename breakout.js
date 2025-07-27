@@ -77,9 +77,31 @@ class Ball extends GameObject {
 
     onCollision(other) {
         if (other instanceof Paddle || other instanceof Brick) {
-            this.vy = -this.vy; // 1. 反转垂直速度
-            // 2. 将球“弹出”碰撞体。这个简化的实现假设球总是从上方撞击。
-            this.y = other.y - this.radius; // 将球的底部精确地放在碰撞物体的顶部
+            // --- 更健壮的碰撞响应 ---
+            // 1. 计算矩形中心和球中心的向量
+            const rectCenterX = other.x + other.width / 2;
+            const rectCenterY = other.y + other.height / 2;
+            const dx = this.x - rectCenterX;
+            const dy = this.y - rectCenterY;
+
+            // 2. 计算组合的半宽/高
+            const combinedHalfWidths = this.radius + other.width / 2;
+            const combinedHalfHeights = this.radius + other.height / 2;
+
+            // 3. 计算X和Y轴上的重叠量
+            const overlapX = combinedHalfWidths - Math.abs(dx);
+            const overlapY = combinedHalfHeights - Math.abs(dy);
+
+            // 4. 根据最小的重叠量来确定碰撞方向
+            if (overlapX < overlapY) {
+                // 水平碰撞
+                this.vx = -this.vx;
+                this.x += (dx > 0 ? overlapX : -overlapX); // 水平弹出
+            } else {
+                // 垂直碰撞
+                this.vy = -this.vy;
+                this.y += (dy > 0 ? overlapY : -overlapY); // 垂直弹出
+            }
         }
     }
 
