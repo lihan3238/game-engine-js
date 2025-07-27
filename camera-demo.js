@@ -7,22 +7,20 @@ class Player extends GameObject {
     constructor(x, y, size, color, speed) {
         super(x, y, size, size, color);
         this.speed = speed;
-        this.keys = {}; // 用于存储按键状态
-
-        // 监听按键事件
-        document.addEventListener('keydown', (e) => this.keys[e.key.toLowerCase()] = true);
-        document.addEventListener('keyup', (e) => this.keys[e.key.toLowerCase()] = false);
     }
 
     update(deltaTime) {
         let dx = 0;
         let dy = 0;
 
+        // 从引擎获取输入管理器
+        const input = this.engine.input;
+
         // 根据按键更新移动方向 (支持 WASD 和方向键)
-        if (this.keys['arrowup'] || this.keys['w']) dy = -1;
-        if (this.keys['arrowdown'] || this.keys['s']) dy = 1;
-        if (this.keys['arrowleft'] || this.keys['a']) dx = -1;
-        if (this.keys['arrowright'] || this.keys['d']) dx = 1;
+        if (input.isKeyDown('arrowup') || input.isKeyDown('w')) dy = -1;
+        if (input.isKeyDown('arrowdown') || input.isKeyDown('s')) dy = 1;
+        if (input.isKeyDown('arrowleft') || input.isKeyDown('a')) dx = -1;
+        if (input.isKeyDown('arrowright') || input.isKeyDown('d')) dx = 1;
 
         // 归一化对角线移动速度，防止斜向移动过快
         if (dx !== 0 && dy !== 0) {

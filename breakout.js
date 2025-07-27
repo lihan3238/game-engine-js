@@ -8,20 +8,16 @@ class Paddle extends GameObject {
     constructor(x, y, width, height, color, speed) {
         super(x, y, width, height, color);
         this.speed = speed;
-        this.dx = 0; // 移动方向
-
-        // 输入处理
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'ArrowLeft') this.dx = -1;
-            if (e.key === 'ArrowRight') this.dx = 1;
-        });
-        document.addEventListener('keyup', (e) => {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') this.dx = 0;
-        });
     }
 
     update(deltaTime) {
-        this.x += this.dx * this.speed * deltaTime;
+        const input = this.engine.input;
+        let dx = 0;
+
+        if (input.isKeyDown('arrowleft')) dx = -1;
+        if (input.isKeyDown('arrowright')) dx = 1;
+
+        this.x += dx * this.speed * deltaTime;
 
         // 边界检测
         if (this.x < 0) this.x = 0;

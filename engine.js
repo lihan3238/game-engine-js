@@ -7,6 +7,7 @@ class GameEngine {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.gameObjects = [];
+        this.input = new InputManager();
         this.camera = new Camera();
         this.lastTime = 0;
 
@@ -163,4 +164,25 @@ class GameObject {
     }
 
     // update(deltaTime) 将在子类中实现，可以通过 this.engine 访问引擎
+}
+
+// -----------------
+// 4. 输入管理器 (Input Manager)
+// -----------------
+class InputManager {
+    constructor() {
+        this.keys = new Set();
+
+        document.addEventListener('keydown', (e) => {
+            this.keys.add(e.key.toLowerCase());
+        });
+
+        document.addEventListener('keyup', (e) => {
+            this.keys.delete(e.key.toLowerCase());
+        });
+    }
+
+    isKeyDown(key) {
+        return this.keys.has(key.toLowerCase());
+    }
 }
