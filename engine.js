@@ -90,7 +90,7 @@ class GameEngine {
 
         // 4. 绘制所有UI元素 (在屏幕空间)
         for (const ui of this.uiElements) {
-            if (ui.draw) {
+            if (ui.isVisible && ui.draw) {
                 ui.draw(this.ctx);
             }
         }
@@ -224,6 +224,7 @@ class InputManager {
 class UIElement {
     constructor() {
         this.engine = null; // 将在addUiElement时被引擎设置
+        this.isVisible = true; // 控制UI元素的可见性
     }
 
     // update(deltaTime) 和 draw(ctx) 将在子类中实现

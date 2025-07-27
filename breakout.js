@@ -1,4 +1,7 @@
 
+let isGameStarted = false;
+let isGameOver = false;
+
 // -----------------
 // 3. 具体的游戏对象 (Specific GameObjects for Breakout)
 // -----------------
@@ -12,6 +15,8 @@ class Paddle extends GameObject {
     }
 
     update(deltaTime) {
+        if (!isGameStarted || isGameOver) return;
+
         const input = this.engine.input;
         let dx = 0;
 
@@ -21,13 +26,13 @@ class Paddle extends GameObject {
         this.x += dx * this.speed * deltaTime;
 
         const gameWidth = this.engine.canvas.width;
-        // 边界检测
         const halfGameWidth = gameWidth / 2;
         if (this.x < -halfGameWidth) this.x = -halfGameWidth;
         if (this.x + this.width > halfGameWidth) {
             this.x = halfGameWidth - this.width;
         }
     }
+
 }
 
 // 小球
@@ -42,6 +47,8 @@ class Ball extends GameObject {
     }
 
     update(deltaTime) {
+        if (!isGameStarted || isGameOver) return;
+
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
@@ -50,32 +57,26 @@ class Ball extends GameObject {
         const halfGameWidth = gameWidth / 2;
         const halfGameHeight = gameHeight / 2;
 
-        // 边界碰撞 (基于左上角坐标 x, y)
-        // 水平边界
+        // 边界碰撞检测
         if (this.x < -halfGameWidth) {
-            this.x = -halfGameWidth; // 弹出
+            this.x = -halfGameWidth;
             this.vx = -this.vx;
         } else if (this.x + this.width > halfGameWidth) {
-            this.x = halfGameWidth - this.width; // 弹出
+            this.x = halfGameWidth - this.width;
             this.vx = -this.vx;
         }
-        // 顶部边界
+
         if (this.y < -halfGameHeight) {
-            this.y = -halfGameHeight; // 弹出
+            this.y = -halfGameHeight;
             this.vy = -this.vy;
         }
-        // 游戏结束的逻辑 (简化版)
+
         if (this.y + this.height > halfGameHeight) {
             console.log("Game Over");
-            // 将球重置到挡板上方
-            const paddle = this.engine.gameObjects.find(obj => obj instanceof Paddle);
-            if (paddle) {
-                this.x = paddle.x + paddle.width / 2 - this.width / 2;
-                this.y = paddle.y - this.height - 5;
-            }
-            this.vy = -this.vy;
+            isGameOver = true;
         }
     }
+
 
     onCollision(other, collisionResult) {
         if (other instanceof Paddle || other instanceof Brick) {
@@ -115,6 +116,28 @@ class Brick extends GameObject {
     draw(ctx) {
         if (this.isVisible) {
             super.draw(ctx);
+        }
+    }
+}
+
+class StartUI extends UIElement {
+    draw(ctx) {
+        if (!isGameStarted && !isGameOver) {
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 48px sans-serif';
+            ctx.textAlign = 'center';
+
+            const cx = ctx.canvas.width / 2;
+            const cy = ctx.canvas.height / 2;
+
+            ctx.fillText('Press SPACE to start', cx, cy - 30);
+            ctx.font = 'bold 32px sans-serif';
+            ctx.fillText('Use ← → to move', cx, cy + 20);
+        } else if (isGameOver) {
+            ctx.fillStyle = 'red';
+            ctx.font = 'bold 64px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText('Game Over', ctx.canvas.width / 2, ctx.canvas.height / 2);
         }
     }
 }
@@ -174,6 +197,15 @@ for (let c = 0; c < brickColumnCount; c++) {
         engine.addGameObject(brick);
     }
 }
+
+const startUI = new StartUI();
+engine.addUiElement(startUI);
+
+document.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && !isGameStarted && !isGameOver) {
+        isGameStarted = true;
+    }
+});
 
 
 // 启动游戏！
