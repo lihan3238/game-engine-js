@@ -110,22 +110,20 @@ class GameEngine {
                 // 只有带 shape 属性的对象才参与碰撞
                 if (!objA.shape || !objB.shape) continue;
 
-                let collided = false;
+                let collisionResult = null;
                 if (objA.shape === 'rect' && objB.shape === 'rect') {
-                    collided = Collision.checkAABB(objA, objB);
-                } else if (objA.shape === 'circle' && objB.shape === 'rect') {
-                    collided = Collision.checkCircleRect(objA, objB);
-                } else if (objA.shape === 'rect' && objB.shape === 'circle') {
-                    collided = Collision.checkCircleRect(objB, objA);
-                } else if (objA.shape === 'circle' && objB.shape === 'circle') {
-                    collided = Collision.checkCircleCircle(objA, objB);
+                    collisionResult = Collision.getAABBCollision(objA, objB);
                 }
-                // (可以继续添加 circle-circle 等其他检查)
 
-                if (collided) {
+                if (collisionResult) {
                     // 通知两个对象它们发生了碰撞
-                    if (objA.onCollision) objA.onCollision(objB);
-                    if (objB.onCollision) objB.onCollision(objA);
+                    // 注意：我们将碰撞结果传递给第一个对象，将反转后的结果传递给第二个对象
+                    if (objA.onCollision) objA.onCollision(objB, collisionResult);
+                    if (objB.onCollision) {
+                        collisionResult.penetration.x *= -1;
+                        collisionResult.penetration.y *= -1;
+                        objB.onCollision(objA, collisionResult);
+                    }
                 }
             }
         }
@@ -235,40 +233,26 @@ class UIElement {
 // 6. 碰撞检测工具类 (Collision Utilities)
 // -----------------
 class Collision {
-    // AABB (Axis-Aligned Bounding Box) 矩形与矩形碰撞
-    static checkAABB(rectA, rectB) {
-        return (
-            rectA.x < rectB.x + rectB.width &&
-            rectA.x + rectA.width > rectB.x &&
-            rectA.y < rectB.y + rectB.height &&
-            rectA.y + rectA.height > rectB.y
-        );
+    // 计算 AABB 碰撞并返回穿透向量
+    static getAABBCollision(rectA, rectB) {
+        const dx = (rectA.x + rectA.width / 2) - (rectB.x + rectB.width / 2);
+        const dy = (rectA.y + rectA.height / 2) - (rectB.y + rectB.height / 2);
+        const combinedHalfWidths = rectA.width / 2 + rectB.width / 2;
+        const combinedHalfHeights = rectA.height / 2 + rectB.height / 2;
+
+        if (Math.abs(dx) < combinedHalfWidths && Math.abs(dy) < combinedHalfHeights) {
+            const overlapX = combinedHalfWidths - Math.abs(dx);
+            const overlapY = combinedHalfHeights - Math.abs(dy);
+            const penetration = { x: 0, y: 0 };
+
+            if (overlapX < overlapY) {
+                penetration.x = dx > 0 ? overlapX : -overlapX;
+            } else {
+                penetration.y = dy > 0 ? overlapY : -overlapY;
+            }
+            return { penetration };
+        }
+        return null;
     }
 
-    // 圆形与矩形碰撞
-    static checkCircleRect(circle, rect) {
-        // 找到矩形上离圆心最近的点
-        const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
-        const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
-
-        // 计算该点与圆心的距离
-        const distanceX = circle.x - closestX;
-        const distanceY = circle.y - closestY;
-        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
-
-        // 如果距离的平方小于半径的平方，则发生碰撞
-        return distanceSquared < (circle.radius * circle.radius);
-    }
-
-    // 圆形与圆形碰撞
-    static checkCircleCircle(circleA, circleB) {
-        // 计算两个圆心之间的 x 和 y 距离
-        const dx = circleB.x - circleA.x;
-        const dy = circleB.y - circleA.y;
-        // 计算距离的平方，以避免开方运算，提高性能
-        const distanceSquared = dx * dx + dy * dy;
-
-        const sumOfRadii = circleA.radius + circleB.radius;
-        return distanceSquared < (sumOfRadii * sumOfRadii);
-    }
 }

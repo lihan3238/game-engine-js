@@ -32,18 +32,16 @@ class Paddle extends GameObject {
 
 // 小球
 class Ball extends GameObject {
-    constructor(x, y, radius, color, speed) {
-        // GameObject需要width/height，我们用它来粗略代表球
-        super(x, y, radius * 2, radius * 2, color);
-        this.radius = radius;
-        this.shape = 'circle';
+    constructor(x, y, size, color, speed) {
+        // 现在球是一个正方形
+        super(x, y, size, size, color);
+        this.shape = 'rect'; // 形状是矩形，用于碰撞检测
         this.speed = speed;
         this.vx = speed; // x方向速度
         this.vy = -speed; // y方向速度
     }
 
     update(deltaTime) {
-        // 我们将小球的中心点作为它的 x, y
         this.x += this.vx * deltaTime;
         this.y += this.vy * deltaTime;
 
@@ -52,66 +50,49 @@ class Ball extends GameObject {
         const halfGameWidth = gameWidth / 2;
         const halfGameHeight = gameHeight / 2;
 
-        // 边界碰撞 (基于中心点和半径)
+        // 边界碰撞 (基于左上角坐标 x, y)
         // 水平边界
-        if (this.x - this.radius < -halfGameWidth) {
-            this.x = -halfGameWidth + this.radius; // 弹出
+        if (this.x < -halfGameWidth) {
+            this.x = -halfGameWidth; // 弹出
             this.vx = -this.vx;
-        } else if (this.x + this.radius > halfGameWidth) {
-            this.x = halfGameWidth - this.radius; // 弹出
+        } else if (this.x + this.width > halfGameWidth) {
+            this.x = halfGameWidth - this.width; // 弹出
             this.vx = -this.vx;
         }
         // 顶部边界
-        if (this.y - this.radius < -halfGameHeight) {
-            this.y = -halfGameHeight + this.radius; // 弹出
+        if (this.y < -halfGameHeight) {
+            this.y = -halfGameHeight; // 弹出
             this.vy = -this.vy;
         }
         // 游戏结束的逻辑 (简化版)
-        if (this.y + this.radius > halfGameHeight) {
+        if (this.y + this.height > halfGameHeight) {
             console.log("Game Over");
-            this.x = 0; // 重置到世界中心
-            this.y = 0;
+            // 将球重置到挡板上方
+            const paddle = this.engine.gameObjects.find(obj => obj instanceof Paddle);
+            if (paddle) {
+                this.x = paddle.x + paddle.width / 2 - this.width / 2;
+                this.y = paddle.y - this.height - 5;
+            }
             this.vy = -this.vy;
         }
     }
 
-    onCollision(other) {
+    onCollision(other, collisionResult) {
         if (other instanceof Paddle || other instanceof Brick) {
-            // --- 更健壮的碰撞响应 ---
-            // 1. 计算矩形中心和球中心的向量
-            const rectCenterX = other.x + other.width / 2;
-            const rectCenterY = other.y + other.height / 2;
-            const dx = this.x - rectCenterX;
-            const dy = this.y - rectCenterY;
+            this.x += collisionResult.penetration.x;
+            this.y += collisionResult.penetration.y;
 
-            // 2. 计算组合的半宽/高
-            const combinedHalfWidths = this.radius + other.width / 2;
-            const combinedHalfHeights = this.radius + other.height / 2;
-
-            // 3. 计算X和Y轴上的重叠量
-            const overlapX = combinedHalfWidths - Math.abs(dx);
-            const overlapY = combinedHalfHeights - Math.abs(dy);
-
-            // 4. 根据最小的重叠量来确定碰撞方向
-            if (overlapX < overlapY) {
+            // 根据碰撞的法线方向（由穿透向量体现）来反转速度
+            // 这是一个更鲁棒的方法，适用于任意角度的碰撞
+            const pen = collisionResult.penetration;
+            if (Math.abs(pen.x) > Math.abs(pen.y)) {
                 // 水平碰撞
                 this.vx = -this.vx;
-                this.x += (dx > 0 ? overlapX : -overlapX); // 水平弹出
             } else {
                 // 垂直碰撞
                 this.vy = -this.vy;
-                this.y += (dy > 0 ? overlapY : -overlapY); // 垂直弹出
             }
         }
-    }
-
-    draw(ctx) {
-        // 绘制时使用中心点 x, y
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.fillStyle = this.color;
-        ctx.fill();
-        ctx.closePath();
     }
 }
 
@@ -160,10 +141,12 @@ const paddle = new Paddle(
     'cyan',
     600
 );
+
+const ballSize = 20; // 球的大小
 const ball = new Ball(
-    0, // 世界中心 x=0
-    gameHeight / 2 - paddleHeight - 50, // 在挡板上方
-    12, // 让球大一点，更容易看清
+    -ballSize / 2, // 水平居中
+    gameHeight / 2 - paddleHeight - 30 - ballSize, // 在挡板正上方
+    ballSize,
     'magenta',
     400
 );
