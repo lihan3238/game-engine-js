@@ -7,6 +7,7 @@ class GameEngine {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.gameObjects = [];
+        this.camera = new Camera();
         this.lastTime = 0;
 
         // 绑定 this
@@ -46,19 +47,31 @@ class GameEngine {
             }
         }
 
+        // 更新摄像头（例如，跟随玩家）
+        if (this.camera) {
+            this.camera.update(deltaTime);
+        }
+
         // 2. 处理物理和碰撞
-        this.checkCollisions();
+        // this.checkCollisions();
 
         // 2. 清除画布
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
 
         // 3. 绘制所有游戏对象
+        // --- 应用摄像头变换 ---
+        this.ctx.save(); // 保存默认状态
+        if (this.camera) {
+            this.camera.applyTransforms(this.ctx);
+        }
+
         for (const obj of this.gameObjects) {
             if (obj.draw) {
                 obj.draw(this.ctx);
             }
         }
 
+        this.ctx.restore(); // 恢复默认状态，以便绘制UI等
         // 请求下一帧
         requestAnimationFrame(this.gameLoop);
     }
@@ -67,37 +80,6 @@ class GameEngine {
     start() {
         this.lastTime = performance.now();
         requestAnimationFrame(this.gameLoop);
-    }
-
-    checkCollisions() {
-        const ball = this.gameObjects.find(obj => obj instanceof Ball);
-        if (!ball) return;
-
-        for (const obj of this.gameObjects) {
-            if (obj === ball) continue;
-
-            // 使用一个简单的矩形碰撞检测函数
-            if (this.isColliding(ball, obj)) {
-                if (obj instanceof Paddle) {
-                    ball.vy = -ball.vy;
-                    // 让小球从挡板上弹开，防止粘连
-                    ball.y = obj.y - ball.radius * 2;
-
-                    // 增加趣味性：根据撞击点改变小球水平速度
-                    let collidePoint = ball.x - (obj.x + obj.width / 2);
-                    // 标准化撞击点: -1 (左侧) to 1 (右侧)
-                    let normalizedCollidePoint = collidePoint / (obj.width / 2);
-                    // 改变vx，让反弹角度更丰富
-                    ball.vx = normalizedCollidePoint * Math.abs(ball.speed);
-                }
-
-                if (obj instanceof Brick && obj.isVisible) {
-                    obj.isVisible = false;
-                    ball.vy = -ball.vy;
-                    // 可以在这里添加得分逻辑
-                }
-            }
-        }
     }
 
     // AABB 碰撞检测
@@ -125,7 +107,45 @@ class GameEngine {
 }
 
 // -----------------
-// 2. 游戏对象基类 (Base GameObject)
+// 2. 摄像头 (Camera)
+// -----------------
+class Camera {
+    constructor(x = 0, y = 0, zoom = 1) {
+        this.x = x;
+        this.y = y;
+        this.zoom = zoom;
+        this.target = null; // 要跟随的游戏对象
+        this.lerpFactor = 0.08; // 平滑移动的插值因子 (0 to 1)
+    }
+
+    // 设置摄像头跟随的目标
+    follow(gameObject) {
+        this.target = gameObject;
+    }
+
+    // 更新摄像头位置以平滑跟随目标
+    update(deltaTime) {
+        if (!this.target) return;
+
+        // 目标中心点
+        const targetX = this.target.x + this.target.width / 2;
+        const targetY = this.target.y + this.target.height / 2;
+
+        // 使用线性插值 (lerp) 实现平滑跟随
+        this.x += (targetX - this.x) * this.lerpFactor;
+        this.y += (targetY - this.y) * this.lerpFactor;
+    }
+
+    // 将摄像头的变换应用到画布上
+    applyTransforms(ctx) {
+        ctx.translate(ctx.canvas.width / 2, ctx.canvas.height / 2);
+        ctx.scale(this.zoom, this.zoom);
+        ctx.translate(-this.x, -this.y);
+    }
+}
+
+// -----------------
+// 3. 游戏对象基类 (Base GameObject)
 // -----------------
 class GameObject {
     constructor(x, y, width, height, color) {
