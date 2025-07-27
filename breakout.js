@@ -2,6 +2,36 @@
 let isGameStarted = false;
 let isGameOver = false;
 
+// 添加重置游戏的函数
+function resetGame() {
+    // 重置游戏状态
+    isGameStarted = false;
+    isGameOver = false;
+    
+    // 重置球的位置和速度
+    ball.x = -ball.width / 2;
+    ball.y = gameHeight / 2 - paddleHeight - 30 - ball.height;
+    ball.vx = ball.speed;
+    ball.vy = -ball.speed;
+    
+    // 重置挡板位置
+    paddle.x = -paddle.width / 2;
+    
+    // 重新创建所有砖块
+    // 首先移除所有现有的砖块
+    engine.gameObjects = engine.gameObjects.filter(obj => !(obj instanceof Brick));
+    
+    // 然后重新创建砖块
+    for (let c = 0; c < brickColumnCount; c++) {
+        for (let r = 0; r < brickRowCount; r++) {
+            const brickX = (c * (brickWidth + brickPadding)) + brickOffsetLeft;
+            const brickY = (r * (brickHeight + brickPadding)) + brickOffsetTop - (gameHeight / 2);
+            const brick = new Brick(brickX, brickY, brickWidth, brickHeight, 'orange');
+            engine.addGameObject(brick);
+        }
+    }
+}
+
 // -----------------
 // 3. 具体的游戏对象 (Specific GameObjects for Breakout)
 // -----------------
@@ -137,7 +167,12 @@ class StartUI extends UIElement {
             ctx.fillStyle = 'red';
             ctx.font = 'bold 64px sans-serif';
             ctx.textAlign = 'center';
-            ctx.fillText('Game Over', ctx.canvas.width / 2, ctx.canvas.height / 2);
+            ctx.fillText('Game Over', ctx.canvas.width / 2, ctx.canvas.height / 2 - 30);
+            
+            // 修改为空格键重启提示
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 32px sans-serif';
+            ctx.fillText('Press SPACE to restart', ctx.canvas.width / 2, ctx.canvas.height / 2 + 30);
         }
     }
 }
@@ -202,8 +237,14 @@ const startUI = new StartUI();
 engine.addUiElement(startUI);
 
 document.addEventListener('keydown', (e) => {
-    if (e.code === 'Space' && !isGameStarted && !isGameOver) {
-        isGameStarted = true;
+    if (e.code === 'Space') {
+        if (!isGameStarted && !isGameOver) {
+            // 开始新游戏
+            isGameStarted = true;
+        } else if (isGameOver) {
+            // 重启游戏
+            resetGame();
+        }
     }
 });
 
