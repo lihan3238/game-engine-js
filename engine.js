@@ -117,6 +117,8 @@ class GameEngine {
                     collided = Collision.checkCircleRect(objA, objB);
                 } else if (objA.shape === 'rect' && objB.shape === 'circle') {
                     collided = Collision.checkCircleRect(objB, objA);
+                } else if (objA.shape === 'circle' && objB.shape === 'circle') {
+                    collided = Collision.checkCircleCircle(objA, objB);
                 }
                 // (可以继续添加 circle-circle 等其他检查)
 
@@ -256,5 +258,17 @@ class Collision {
 
         // 如果距离的平方小于半径的平方，则发生碰撞
         return distanceSquared < (circle.radius * circle.radius);
+    }
+
+    // 圆形与圆形碰撞
+    static checkCircleCircle(circleA, circleB) {
+        // 计算两个圆心之间的 x 和 y 距离
+        const dx = circleB.x - circleA.x;
+        const dy = circleB.y - circleA.y;
+        // 计算距离的平方，以避免开方运算，提高性能
+        const distanceSquared = dx * dx + dy * dy;
+
+        const sumOfRadii = circleA.radius + circleB.radius;
+        return distanceSquared < (sumOfRadii * sumOfRadii);
     }
 }
