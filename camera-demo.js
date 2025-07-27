@@ -35,7 +35,32 @@ class Player extends GameObject {
 }
 
 // -----------------
-// 2. 初始化游戏 (Initialize the Game)
+// 2. UI 元素 (UI Elements for the Demo)
+// -----------------
+
+class PlayerCoordsUI extends UIElement {
+    constructor(playerToTrack) {
+        super();
+        this.player = playerToTrack;
+        this.x = 15; // 屏幕坐标 X
+        this.y = 35; // 屏幕坐标 Y
+        this.color = 'grey';
+        this.font = '24px Arial';
+    }
+
+    draw(ctx) {
+        const playerX = this.player.x.toFixed(0);
+        const playerY = this.player.y.toFixed(0);
+        const text = `Player Coords: (${playerX}, ${playerY})`;
+
+        ctx.font = this.font;
+        ctx.fillStyle = this.color;
+        ctx.fillText(text, this.x, this.y);
+    }
+}
+
+// -----------------
+// 3. 初始化游戏 (Initialize the Game)
 // -----------------
 const engine = new GameEngine('gameCanvas');
 
@@ -56,6 +81,10 @@ for (let i = 0; i < 50; i++) {
 // 创建玩家
 const player = new Player(0, 0, 40, 'royalblue', 300);
 engine.addGameObject(player);
+
+// 创建并添加UI元素
+const coordsDisplay = new PlayerCoordsUI(player);
+engine.addUiElement(coordsDisplay);
 
 // 让摄像头跟随玩家
 engine.camera.follow(player);

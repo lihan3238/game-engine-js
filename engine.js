@@ -7,6 +7,7 @@ class GameEngine {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.gameObjects = [];
+        this.uiElements = [];
         this.input = new InputManager();
         this.camera = new Camera();
         this.lastTime = 0;
@@ -36,6 +37,12 @@ class GameEngine {
         this.gameObjects.push(obj);
     }
 
+    // 添加UI元素到引擎
+    addUiElement(ui) {
+        ui.engine = this;
+        this.uiElements.push(ui);
+    }
+
     // 游戏循环
     gameLoop(timestamp) {
         const deltaTime = (timestamp - this.lastTime) / 1000; // 转换为秒
@@ -45,6 +52,13 @@ class GameEngine {
         for (const obj of this.gameObjects) {
             if (obj.update) {
                 obj.update(deltaTime);
+            }
+        }
+
+        // 更新UI元素
+        for (const ui of this.uiElements) {
+            if (ui.update) {
+                ui.update(deltaTime);
             }
         }
 
@@ -73,6 +87,14 @@ class GameEngine {
         }
 
         this.ctx.restore(); // 恢复默认状态，以便绘制UI等
+
+        // 4. 绘制所有UI元素 (在屏幕空间)
+        for (const ui of this.uiElements) {
+            if (ui.draw) {
+                ui.draw(this.ctx);
+            }
+        }
+
         // 请求下一帧
         requestAnimationFrame(this.gameLoop);
     }
@@ -185,4 +207,15 @@ class InputManager {
     isKeyDown(key) {
         return this.keys.has(key.toLowerCase());
     }
+}
+
+// -----------------
+// 5. UI元素基类 (Base UI Element)
+// -----------------
+class UIElement {
+    constructor() {
+        this.engine = null; // 将在addUiElement时被引擎设置
+    }
+
+    // update(deltaTime) 和 draw(ctx) 将在子类中实现
 }
