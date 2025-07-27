@@ -68,7 +68,7 @@ class GameEngine {
         }
 
         // 2. 处理物理和碰撞
-        // this.checkCollisions();
+        this.checkCollisions();
 
         // 2. 清除画布
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
@@ -99,33 +99,40 @@ class GameEngine {
         requestAnimationFrame(this.gameLoop);
     }
 
+    // 碰撞检测循环
+    checkCollisions() {
+        // 这是一个简单的 O(n^2) 检查，对于少量物体是OK的
+        for (let i = 0; i < this.gameObjects.length; i++) {
+            for (let j = i + 1; j < this.gameObjects.length; j++) {
+                const objA = this.gameObjects[i];
+                const objB = this.gameObjects[j];
+
+                // 只有带 shape 属性的对象才参与碰撞
+                if (!objA.shape || !objB.shape) continue;
+
+                let collided = false;
+                if (objA.shape === 'rect' && objB.shape === 'rect') {
+                    collided = Collision.checkAABB(objA, objB);
+                } else if (objA.shape === 'circle' && objB.shape === 'rect') {
+                    collided = Collision.checkCircleRect(objA, objB);
+                } else if (objA.shape === 'rect' && objB.shape === 'circle') {
+                    collided = Collision.checkCircleRect(objB, objA);
+                }
+                // (可以继续添加 circle-circle 等其他检查)
+
+                if (collided) {
+                    // 通知两个对象它们发生了碰撞
+                    if (objA.onCollision) objA.onCollision(objB);
+                    if (objB.onCollision) objB.onCollision(objA);
+                }
+            }
+        }
+    }
+
     // 启动游戏
     start() {
         this.lastTime = performance.now();
         requestAnimationFrame(this.gameLoop);
-    }
-
-    // AABB 碰撞检测
-    isColliding(objA, objB) {
-        // 为了让小球的碰撞更精确，我们使用它的中心和半径来定义包围盒
-        let boxA = {
-            x: objA.x - objA.radius,
-            y: objA.y - objA.radius,
-            width: objA.radius * 2,
-            height: objA.radius * 2
-        };
-
-        let boxB = {
-            x: objB.x,
-            y: objB.y,
-            width: objB.width,
-            height: objB.height
-        };
-
-        return boxA.x < boxB.x + boxB.width &&
-            boxA.x + boxA.width > boxB.x &&
-            boxA.y < boxB.y + boxB.height &&
-            boxA.y + boxA.height > boxB.y;
     }
 }
 
@@ -178,6 +185,7 @@ class GameObject {
         this.height = height;
         this.color = color;
         this.engine = null; // 对引擎的引用，将在addGameObject时被设置
+        this.shape = null; // 'rect', 'circle', etc.
     }
 
     draw(ctx) {
@@ -186,6 +194,7 @@ class GameObject {
     }
 
     // update(deltaTime) 将在子类中实现，可以通过 this.engine 访问引擎
+    // onCollision(other) 将在子类中实现
 }
 
 // -----------------
@@ -218,4 +227,34 @@ class UIElement {
     }
 
     // update(deltaTime) 和 draw(ctx) 将在子类中实现
+}
+
+// -----------------
+// 6. 碰撞检测工具类 (Collision Utilities)
+// -----------------
+class Collision {
+    // AABB (Axis-Aligned Bounding Box) 矩形与矩形碰撞
+    static checkAABB(rectA, rectB) {
+        return (
+            rectA.x < rectB.x + rectB.width &&
+            rectA.x + rectA.width > rectB.x &&
+            rectA.y < rectB.y + rectB.height &&
+            rectA.y + rectA.height > rectB.y
+        );
+    }
+
+    // 圆形与矩形碰撞
+    static checkCircleRect(circle, rect) {
+        // 找到矩形上离圆心最近的点
+        const closestX = Math.max(rect.x, Math.min(circle.x, rect.x + rect.width));
+        const closestY = Math.max(rect.y, Math.min(circle.y, rect.y + rect.height));
+
+        // 计算该点与圆心的距离
+        const distanceX = circle.x - closestX;
+        const distanceY = circle.y - closestY;
+        const distanceSquared = (distanceX * distanceX) + (distanceY * distanceY);
+
+        // 如果距离的平方小于半径的平方，则发生碰撞
+        return distanceSquared < (circle.radius * circle.radius);
+    }
 }
