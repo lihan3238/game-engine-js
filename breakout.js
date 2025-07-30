@@ -7,20 +7,23 @@ function resetGame() {
     // 重置游戏状态
     isGameStarted = false;
     isGameOver = false;
-    
+
     // 重置球的位置和速度
     ball.x = -ball.width / 2;
     ball.y = gameHeight / 2 - paddleHeight - 30 - ball.height;
-    ball.vx = ball.speed;
-    ball.vy = -ball.speed;
-    
+    const angle = (Math.random() * Math.PI / 3) + Math.PI / 6;
+    const direction = Math.random() < 0.5 ? -1 : 1;
+    ball.vx = Math.cos(angle) * ball.speed * direction;
+    ball.vy = -Math.sin(angle) * ball.speed;
+
+
     // 重置挡板位置
     paddle.x = -paddle.width / 2;
-    
+
     // 重新创建所有砖块
     // 首先移除所有现有的砖块
     engine.gameObjects = engine.gameObjects.filter(obj => !(obj instanceof Brick));
-    
+
     // 然后重新创建砖块
     for (let c = 0; c < brickColumnCount; c++) {
         for (let r = 0; r < brickRowCount; r++) {
@@ -68,12 +71,15 @@ class Paddle extends GameObject {
 // 小球
 class Ball extends GameObject {
     constructor(x, y, size, color, speed) {
-        // 现在球是一个正方形
         super(x, y, size, size, color);
-        this.shape = 'rect'; // 形状是矩形，用于碰撞检测
+        this.shape = 'rect';
         this.speed = speed;
-        this.vx = speed; // x方向速度
-        this.vy = -speed; // y方向速度
+
+        // 随机初始方向（30°到150°，防止垂直发射）
+        const angle = (Math.random() * Math.PI / 3) + Math.PI / 6; // 30°~60°
+        const direction = Math.random() < 0.5 ? -1 : 1; // 向左或向右
+        this.vx = Math.cos(angle) * speed * direction;
+        this.vy = -Math.sin(angle) * speed;
     }
 
     update(deltaTime) {
@@ -87,7 +93,7 @@ class Ball extends GameObject {
         const halfGameWidth = gameWidth / 2;
         const halfGameHeight = gameHeight / 2;
 
-        // 边界碰撞检测
+        // 边界碰撞
         if (this.x < -halfGameWidth) {
             this.x = -halfGameWidth;
             this.vx = -this.vx;
@@ -107,20 +113,24 @@ class Ball extends GameObject {
         }
     }
 
-
     onCollision(other, collisionResult) {
-        if (other instanceof Paddle || other instanceof Brick) {
+        if (other instanceof Paddle) {
+            // 使用“击中位置”影响反弹角度
+            const relativeIntersect = (this.x + this.width / 2 - other.x) / other.width; // 0~1
+            const normalized = relativeIntersect - 0.5; // -0.5~+0.5
+            const angle = normalized * Math.PI / 3; // -60° ~ +60°
+            const speed = this.speed;
+            this.vx = speed * Math.sin(angle);
+            this.vy = -speed * Math.cos(angle);
+        } else if (other instanceof Brick) {
             this.x += collisionResult.penetration.x;
             this.y += collisionResult.penetration.y;
 
-            // 根据碰撞的法线方向（由穿透向量体现）来反转速度
-            // 这是一个更鲁棒的方法，适用于任意角度的碰撞
+            // 简化砖块反弹逻辑
             const pen = collisionResult.penetration;
             if (Math.abs(pen.x) > Math.abs(pen.y)) {
-                // 水平碰撞
                 this.vx = -this.vx;
             } else {
-                // 垂直碰撞
                 this.vy = -this.vy;
             }
         }
@@ -168,7 +178,7 @@ class StartUI extends UIElement {
             ctx.font = 'bold 64px sans-serif';
             ctx.textAlign = 'center';
             ctx.fillText('Game Over', ctx.canvas.width / 2, ctx.canvas.height / 2 - 30);
-            
+
             // 修改为空格键重启提示
             ctx.fillStyle = 'white';
             ctx.font = 'bold 32px sans-serif';
